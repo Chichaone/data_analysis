@@ -1,0 +1,155 @@
+%matplotlib inline  
+import librosa
+import librosa.display
+import IPython
+import numpy as np
+import pandas as pd
+import scipy
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+pip install librosa
+
+audio_data = '../input/freesound-audio-tagging/audio_train/00044347.wav'
+y, sr = librosa.load(audio_data)
+print(type(y), type(sr))
+
+print(y.shape, sr)
+
+print(y, sr)
+
+import IPython.display as ipd
+plt.figure(figsize=(14, 5))
+
+librosa.display.waveshow(y, sr=sr)
+#librosa.display.waveplot(y, sr=sr)
+ipd.Audio(audio_data)
+
+y_harmonic, y_percussive = librosa.effects.hpss(y)
+plt.figure(figsize=(15, 5))
+librosa.display.waveshow(y_harmonic, sr=sr, alpha=0.25)
+librosa.display.waveshow(y_percussive, sr=sr, color='r', alpha=0.5)
+plt.title('Harmonic + Percussive')
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+tempo, beat_frames = librosa.beat.beat_track(y=y_percussive,sr=sr)
+print('Detected Tempo: '+str(tempo)+ ' beats/min')
+beat_times = librosa.frames_to_time(beat_frames, sr=sr)
+beat_time_diff=np.ediff1d(beat_times)
+beat_nums = np.arange(1, np.size(beat_times))
+
+fig, ax = plt.subplots()
+fig.set_size_inches(15, 5)
+ax.set_ylabel("Time difference (s)")
+ax.set_xlabel("Beats")
+g=ax.bar(beat_nums, beat_time_diff, color=sns.color_palette("BuGn_d"))
+ax.set_xticklabels([])
+
+chroma=librosa.feature.chroma_cens(y=y_harmonic, sr=sr)
+plt.figure(figsize=(15, 5))
+librosa.display.specshow(chroma,y_axis='chroma', x_axis='time')
+plt.colorbar()
+
+mfccs = librosa.feature.mfcc(y=y_harmonic, sr=sr, n_mfcc=20)
+plt.figure(figsize=(15, 5))
+librosa.display.specshow(mfccs, x_axis='time')
+plt.colorbar()
+plt.title('MFCC')
+
+mfccs
+
+X = librosa.stft(y)
+Xdb = librosa.amplitude_to_db(abs(X))
+plt.figure(figsize=(14, 5))
+librosa.display.specshow(Xdb, sr=sr, x_axis='time', y_axis='hz')
+plt.colorbar()
+
+librosa.display.specshow(Xdb, sr=sr, x_axis='time', y_axis='log')
+plt.colorbar()
+
+cent = librosa.feature.spectral_centroid(y=y, sr=sr)
+plt.figure(figsize=(15,5))
+plt.subplot(1, 1, 1)
+plt.semilogy(cent.T, label='Spectral centroid')
+plt.ylabel('Hz')
+plt.xticks([])
+plt.xlim([0, cent.shape[-1]])
+plt.legend()
+
+import sklearn
+
+spectral_centroids = librosa.feature.spectral_centroid(y=y, sr=sr)[0]
+spectral_centroids.shape
+
+# Вычисление временной переменной для визуализации
+plt.figure(figsize=(12, 4))
+frames = range(len(spectral_centroids))
+t = librosa.frames_to_time(frames)
+
+# Нормализация спектрального центроида для визуализации
+def normalize(y, axis=0):
+    return sklearn.preprocessing.minmax_scale(y, axis=axis)
+
+# Построение спектрального центроида вместе с формой волны
+librosa.display.waveshow(y, sr=sr, alpha=0.4)
+plt.plot(t, normalize(spectral_centroids), color='b')
+
+# Spectral Contrast
+contrast=librosa.feature.spectral_contrast(y=y_harmonic,sr=sr)
+plt.figure(figsize=(15,5))
+librosa.display.specshow(contrast, x_axis='time')
+plt.colorbar()
+plt.ylabel('Frequency bands')
+plt.title('Spectral contrast')
+
+# Spectral Rolloff
+rolloff = librosa.feature.spectral_rolloff(y=y, sr=sr)
+plt.figure(figsize=(15,5))
+plt.semilogy(rolloff.T, label='Roll-off frequency')
+plt.ylabel('Hz')
+plt.xticks([])
+plt.xlim([0, rolloff.shape[-1]])
+plt.legend()
+
+spectral_rolloff = librosa.feature.spectral_rolloff(y=y+0.01, sr=sr)[0]
+plt.figure(figsize=(12, 4))
+librosa.display.waveshow(y, sr=sr, alpha=0.4)
+plt.plot(t, normalize(spectral_rolloff), color='r')
+
+spectral_bandwidth_2 = librosa.feature.spectral_bandwidth(y=y+0.01, sr=sr)[0]
+spectral_bandwidth_3 = librosa.feature.spectral_bandwidth(y=y+0.01, sr=sr, p=3)[0]
+spectral_bandwidth_4 = librosa.feature.spectral_bandwidth(y=y+0.01, sr=sr, p=4)[0]
+
+plt.figure(figsize=(15, 9))
+librosa.display.waveshow(y, sr=sr, alpha=0.4)
+plt.plot(t, normalize(spectral_bandwidth_2), color='r')
+plt.plot(t, normalize(spectral_bandwidth_3), color='g')
+plt.plot(t, normalize(spectral_bandwidth_4), color='y')
+plt.legend(('p = 2', 'p = 3', 'p = 4'))
+
+# Построение графика сигнала:
+plt.figure(figsize=(14, 5))
+librosa.display.waveshow(y, sr=sr)
+# Увеличение масштаба:
+n0 = 9000
+n1 = 9100
+plt.figure(figsize=(14, 5))
+plt.plot(y[n0:n1])
+plt.grid()
+
+# Zero Crossing Rate
+zrate=librosa.feature.zero_crossing_rate(y_harmonic)
+plt.figure(figsize=(14,5))
+plt.semilogy(zrate.T, label='Fraction')
+plt.ylabel('Fraction per Frame')
+plt.xticks([])
+plt.xlim([0, rolloff.shape[-1]])
+plt.legend()
+
+n0 = 9000
+n1 = 9100
+
+zero_crossings = librosa.zero_crossings(y[n0:n1], pad=False)
+print(sum(zero_crossings))
